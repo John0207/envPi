@@ -22,21 +22,19 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 '''
-# imports needed to communicate with firebase, as well as to work with the grovepi.
-# libraries also needed for exceptions, time for the while loop, and to work with json.
-import ts as ts
-from firebase_admin import db
+
+# imports needed to communicate with the grovepi.
+# libraries also needed for exceptions, time for the while loop, and to work with json and the database.
 import grovepi
 from grove_rgb_lcd import setRGB, setText_norefresh, setText
 from time import sleep
 from math import isnan
 import json
-import pyrebase
-import datetime as DT
+import Database
 
-config = {"This is where configuration data goes for Firebase"}
-
-firebase = pyrebase.initialize_app(config)
+# set the settings here
+Database.send_settings_to_firebase(too_low_temp=80, just_right_temp=90, too_high_temp=95, humidity_limit=60,
+                                   light_threshold=57)
 
 # set ports for light and dht sensors, lcd uses I2c port
 # connect light sensor to port A0
@@ -58,27 +56,18 @@ time_to_sleep_short = 3
 
 # temperature limits in f:
 # Lower limit
-too_low_temp = 60.0
+too_low_temp = Database.get_low_temp()
 # Perfect Temp
-just_right_temp = 30.0
+just_right_temp = Database.get_just_right_temp()
 # Temp Too high
-too_high_temp = 95.0
+too_high_temp = Database.get_high_temp()
 
 # Humidity Limit
-humidity_limit = 60.0
+humidity_limit = Database.get_humidity_limit()
 
 # light_threshold, good value for light/dark room
 # should be adjusted for each room system is in
-light_threshold = 57
-
-# Get a reference to the database service
-db = firebase.database()
-
-
-def time_stamp():
-    ts = DT.datetime.now()
-    st = ts.strftime('%Y-%m-%d %H:%M:%S')
-    return st
+light_threshold = Database.get_light_threshold()
 
 
 # boolean functions to determine state of the environment
@@ -105,13 +94,6 @@ def too_hot():
 
 def too_humid():
     if humid_int >= humidity_limit:
-        return True
-    else:
-        return False
-
-
-def comfortable():
-    if (temp_int >= too_low_temp) and (temp_int <= just_right_temp) and (humid_int < humidity_limit):
         return True
     else:
         return False
@@ -172,32 +154,20 @@ def append_data_to_file(temp_int, humid_int):
         json.dumps(data_file_list, write_file)
 
 
-def print_data_confirmation():
-    print("Temp:" + temp_string + "F\n" + "Humidity :" + humid_string + "%")
-    print("This data was recorded!\n")
-
-
 def print_light_value():
-    global light_sensor_value
-    # set light sensor value variable
-    light_sensor_value = grovepi.analogRead(light_sensor)
     # print results to console
     print("sensor_value = %d\n" % light_sensor_value)
 
 
-def send_data_to_firebase():
-    # For firebase database
-    db.child(time_stamp()).set({
-        'fTemp': temp_string,
-        'humidity': humid_string
-    })
-
-
 # create data file list to store data just before while loop
 data_file_list = []
+
 # Main loop
 while True:
     try:
+        # read the light sensor value from the sensor
+        light_sensor_value = grovepi.analogRead(light_sensor)
+
         # print the light value for configuration of the system
         print_light_value()
 
@@ -224,13 +194,13 @@ while True:
         elif light_sensor_value > light_threshold:
             # send data to json file and firebase database
             append_data_to_file(temp_int, humid_int)
-            send_data_to_firebase()
+            Database.send_data_to_firebase(temp_string, humid_string, light_sensor_value)
             # calculate lcd color
             background_color_list = calculate_lcd_background_color(temp_int, humid_int)
             # set lcd color
             setRGB(background_color_list[0], background_color_list[1], background_color_list[2])
             # print data/confirmation to the console
-            print_data_confirmation()
+            Database.print_data_confirmation(temp_string, humid_string)
 
         # check if we have nans
         # if so, then raise a type error exception
@@ -253,6 +223,7 @@ while True:
 
     except KeyboardInterrupt as e:
         print(str(e))
+        print("GoodBye :)")
         # since we're exiting the program
         # it's better to leave the LCD with a blank text
         setText("")
