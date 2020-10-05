@@ -2,7 +2,12 @@ import pyrebase
 import datetime as DT
 from firebase_admin import storage
 
-
+'''
+To retrieve your Google Firebase configuration, login to your project and 
+click the gear icon next to project overview. Then scroll down to 
+"Firebase SDK snippet". Select the config option, and you should see your configuration settings. 
+Copy the corresponding values into the parenthesis as they are on your Firebase page. 
+'''
 config = {
     "apiKey": "",
     "authDomain": "",
