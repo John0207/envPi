@@ -21,7 +21,7 @@ db = firebase.database()
 # used to create timestamp which is saved with each entry
 def time_stamp():
     ts = DT.datetime.now()
-    st = ts.strftime('%Y-%m-%d %H:%M')
+    st = ts.strftime('%Y-%m-%d %H:%M:%S')
     return st
 
 
@@ -37,11 +37,10 @@ def update_latest_entry(temp_string, humid_string):
 
 # sends data to Firebase database
 def send_data_to_firebase(temp_string, humid_string, light_sensor_value):
-    db.child("data").push({
+    db.child("data").child(time_stamp()).set({
         'fTemp': temp_string,
         'humidity': humid_string,
-        'light': light_sensor_value,
-        'time': time_stamp()
+        'light': light_sensor_value
     })
 
 
