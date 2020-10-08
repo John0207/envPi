@@ -32,13 +32,13 @@ import grovepi
 from grove_rgb_lcd import setRGB, setText_norefresh, setText
 import Database
 import json
-import Menu2
+import Menu
 
 # set the settings here
 Database.send_settings_to_firebase(too_low_temp=80, just_right_temp=90, too_high_temp=95, humidity_limit=60,
                                    light_threshold=57)
 # Run the menu function here so that the user's choices are written to the variables
-Menu2.menu()
+Menu.menu()
 
 # set ports for light and dht sensors, lcd uses I2c port
 # connect light sensor to port A0
