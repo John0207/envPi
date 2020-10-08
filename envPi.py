@@ -23,18 +23,22 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 '''
 
+from math import isnan
+from time import sleep
+
 # imports needed to communicate with the grovepi.
 # libraries also needed for exceptions, time for the while loop, and to work with json and the database.
 import grovepi
 from grove_rgb_lcd import setRGB, setText_norefresh, setText
-from time import sleep
-from math import isnan
-import json
 import Database
+import json
+import Menu2
 
 # set the settings here
 Database.send_settings_to_firebase(too_low_temp=80, just_right_temp=90, too_high_temp=95, humidity_limit=60,
                                    light_threshold=57)
+# Run the menu function here so that the user's choices are written to the variables
+Menu2.menu()
 
 # set ports for light and dht sensors, lcd uses I2c port
 # connect light sensor to port A0
@@ -147,19 +151,19 @@ def celsius_to_fahrenheit(tempc):
     return tempf
 
 
-# function which stores data from sensors into file
-def append_data_to_file(temp_int, humid_int):
-    data_file_list.append([temp_int, humid_int])
-    with open("data.json", "w") as write_file:
-        json.dumps(data_file_list, write_file)
-
-
+# print value from light sensor to console
 def print_light_value():
-    # print results to console
     print("sensor_value = %d\n" % light_sensor_value)
 
 
+def append_data_to_json_file():
+    data_file_list.append([Database.get_last_temp(), Database.get_last_humidity()])
+    with open("data.json", "w") as write_file:
+        json.dump(data_file_list, write_file)
+
+
 # create data file list to store data just before while loop
+# this is written to a json file which is used to draw the graph
 data_file_list = []
 
 # Main loop
@@ -187,13 +191,14 @@ while True:
 
         # if light sensor value is under light_threshold, display message to console
         if light_sensor_value < light_threshold:
-            print("Insufficient Light - No Data Recorded\n")
+            print("\nInsufficient Light - No Data Recorded\n")
 
         # if light sensor value is over light_threshold, write data to json file
         # print values to console and change background color of the lcd accordingly
         elif light_sensor_value > light_threshold:
             # send data to json file and firebase database
-            append_data_to_file(temp_int, humid_int)
+            append_data_to_json_file()
+            # send recordings from the sensors to Firebase database
             Database.send_data_to_firebase(temp_string, humid_string, light_sensor_value)
             # calculate lcd color
             background_color_list = calculate_lcd_background_color(temp_int, humid_int)
@@ -201,6 +206,8 @@ while True:
             setRGB(background_color_list[0], background_color_list[1], background_color_list[2])
             # print data/confirmation to the console
             Database.print_data_confirmation(temp_string, humid_string)
+            # update database with most recent temp and humidity values
+            Database.update_latest_entry(temp_int, humid_int)
 
         # check if we have nans
         # if so, then raise a type error exception
@@ -223,6 +230,7 @@ while True:
 
     except KeyboardInterrupt as e:
         print(str(e))
+        # exit message since keyboard interrupt is the most efficient way to end the program
         print("GoodBye :)")
         # since we're exiting the program
         # it's better to leave the LCD with a blank text

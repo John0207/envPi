@@ -1,13 +1,7 @@
 import pyrebase
 import datetime as DT
-from firebase_admin import storage
 
-'''
-To retrieve your Google Firebase configuration, login to your project and 
-click the gear icon next to project overview. Then scroll down to 
-"Firebase SDK snippet". Select the config option, and you should see your configuration settings. 
-Copy the corresponding values into the parenthesis as they are on your Firebase page. 
-'''
+# enter credentials from Firebase project here
 config = {
     "apiKey": "",
     "authDomain": "",
@@ -19,24 +13,30 @@ config = {
     "appId": "",
     "measurementId": ""
 }
+# Initialize Firebase database and create a reference
 firebase = pyrebase.initialize_app(config)
 db = firebase.database()
 
-storage = firebase.storage()
 
-
-def add_data_file_to_storage():
-    storage.child("data/data.json").put("data.json")
-
-
+# used to create timestamp which is saved with each entry
 def time_stamp():
     ts = DT.datetime.now()
     st = ts.strftime('%Y-%m-%d %H:%M')
     return st
 
 
+# used to update the "last" branch of the database
+# the "last" branch stores only the latest temperature and humidity values
+def update_latest_entry(temp_string, humid_string):
+    dict = {
+        'temp': temp_string,
+        'humidity': humid_string
+    }
+    db.child("last").update(dict)
+
+
+# sends data to Firebase database
 def send_data_to_firebase(temp_string, humid_string, light_sensor_value):
-    # For firebase database
     db.child("data").push({
         'fTemp': temp_string,
         'humidity': humid_string,
@@ -45,6 +45,7 @@ def send_data_to_firebase(temp_string, humid_string, light_sensor_value):
     })
 
 
+# sends settings to the Firebase database
 def send_settings_to_firebase(too_low_temp, just_right_temp, too_high_temp, humidity_limit, light_threshold):
     db.child("settings").set({
         'too low': too_low_temp,
@@ -55,9 +56,15 @@ def send_settings_to_firebase(too_low_temp, just_right_temp, too_high_temp, humi
     })
 
 
+# prints confirmation that data is recorded, and prints the data that was recorded
 def print_data_confirmation(temp_string, humid_string):
-    print("Temp:" + temp_string + "F\n" + "Humidity :" + humid_string + "%")
+    print("Temp: " + temp_string + "F\n" + "Humidity: " + humid_string + "%")
     print("This data was recorded!\n")
+
+
+'''
+functions used to read the settings from Firebase
+'''
 
 
 def get_low_temp():
@@ -85,3 +92,16 @@ def get_light_threshold():
     return light_threshold
 
 
+'''
+functions used to retrieve the most recent temperature and humidity from Firebase database
+'''
+
+
+def get_last_temp():
+    temp_from_firebase = str(db.child('last/temp').get().val())
+    return temp_from_firebase
+
+
+def get_last_humidity():
+    humidity_from_firebase = str(db.child('last/humidity').get().val())
+    return humidity_from_firebase
