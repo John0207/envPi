@@ -115,7 +115,11 @@ def calculate_lcd_background_color(temp_int, humid_int):
     # initialize the color array
     background_color_list = [0, 0, 0]
     # green for comfortable conditions
-    if comfortable():
+    if too_humid():
+        r = 0
+        g = 255
+        b = 128
+    elif comfortable():
         r = 0
         g = 255
         b = 0
